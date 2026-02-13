@@ -6,11 +6,13 @@ import { Users, Waves, ShieldAlert, Activity, ArrowUpRight, AlertCircle } from '
 import { cn } from '@/lib/utils';
 import { getRiskSummary } from '@/api/floodApi';
 import type { RiskSummary } from '@/api/types';
+import { useMlFeatures } from '@/ml/useMlFeatures';
 
 type KPICardsVariant = 'grid' | 'stack';
 
 export function KPICards({ variant = 'grid', className }: { variant?: KPICardsVariant; className?: string }) {
     const { region, scenario, aoiPolygons } = useStore();
+    const mlFeatures = useMlFeatures();
 
     const [currentData, setCurrentData] = useState<RiskSummary | null>(null);
     const [baselineData, setBaselineData] = useState<RiskSummary | null>(null);
@@ -23,8 +25,8 @@ export function KPICards({ variant = 'grid', className }: { variant?: KPICardsVa
         setError(null);
 
         Promise.all([
-            getRiskSummary(region, scenario, { aoiPolygons }),
-            getRiskSummary(region, '1m', { aoiPolygons }),
+            getRiskSummary(region, scenario, { aoiPolygons, mlFeatures }),
+            getRiskSummary(region, '1m', { aoiPolygons, mlFeatures }),
         ])
             .then(([curr, base]) => {
                 if (cancelled) return;
@@ -43,7 +45,7 @@ export function KPICards({ variant = 'grid', className }: { variant?: KPICardsVa
         return () => {
             cancelled = true;
         };
-    }, [region, scenario, aoiPolygons]);
+    }, [region, scenario, aoiPolygons, mlFeatures]);
 
     const stats = useMemo(() => {
         if (!currentData || !baselineData) return null;

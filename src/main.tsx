@@ -6,13 +6,16 @@ import "@arcgis/core/assets/esri/themes/light/main.css";
 import App from './App.tsx'
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { AuthProvider } from '@/auth/AuthProvider';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ThemeProvider>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   </StrictMode>,
 )

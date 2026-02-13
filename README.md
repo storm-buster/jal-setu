@@ -1,7 +1,7 @@
-# FloodShield AI - Deployment Instructions
+# Jal-Setu AI - Deployment Instructions
 
 ## Overview
-FloodShield AI is a government-grade flood decision support system frontend. It uses React, Vite, ArcGIS API for JavaScript, and Recharts.
+Jal-Setu AI is a government-grade flood decision support system frontend. It uses React, Vite, ArcGIS API for JavaScript, and Recharts.
 
 ## Setup
 1.  **Install Dependencies**:

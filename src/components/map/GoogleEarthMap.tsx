@@ -31,7 +31,7 @@ export function GoogleEarthMap() {
   const regionRef = useRef<Region>('Bihar');
   const scenarioRef = useRef<Scenario>('0m');
 
-  const { region, scenario } = useStore();
+  const { region, scenario, setMapSample } = useStore();
 
   useEffect(() => {
     regionRef.current = region;
@@ -100,6 +100,8 @@ export function GoogleEarthMap() {
                 (results: google.maps.ElevationResult[] | null, status: google.maps.ElevationStatus) => {
                   const elev =
                     status === 'OK' && results && results[0] ? Math.round(results[0].elevation) : null;
+
+                  setMapSample({ lon: latLng.lng(), lat: latLng.lat(), elevationM: elev });
 
                   const content = `
                     <div style="font-size:12px;line-height:1.4">

@@ -17,7 +17,7 @@ function App() {
         <header className="flex-none flex items-center justify-between px-4 md:px-6 py-3 border-b border-border bg-background/85 backdrop-blur-md z-20">
           <div className="flex items-center gap-3">
             <div className="flex flex-col">
-              <div className="text-xs md:text-sm font-semibold tracking-wide">FloodShield AI</div>
+              <div className="text-xs md:text-sm font-semibold tracking-wide">Jal-Setu AI</div>
               <div className="text-[10px] md:text-xs text-muted-foreground">Flood Decision Support Dashboard</div>
             </div>
           </div>

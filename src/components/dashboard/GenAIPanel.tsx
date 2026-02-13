@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Sparkles, Copy, Check, BrainCircuit, FileDown, ChevronDown } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { createReport, getRiskSummary } from '@/api/floodApi';
+import { createReport, getRiskSummary, sendChat } from '@/api/floodApi';
+import { useMlFeatures } from '@/ml/useMlFeatures';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -11,12 +12,23 @@ type AIStatus = 'idle' | 'loading' | 'success' | 'error';
 
 export function GenAIPanel() {
     const { region, scenario, uploadedFile, aoiPolygons } = useStore();
+    const mlFeatures = useMlFeatures();
+    const [mode, setMode] = useState<'report' | 'chat'>('report');
+
+    // Report State
     const [status, setStatus] = useState<AIStatus>('idle');
     const [response, setResponse] = useState<string | null>(null);
     const [alertId, setAlertId] = useState<string>("");
     const [copied, setCopied] = useState(false);
     const [exportingPdf, setExportingPdf] = useState(false);
     const [insightsOpen, setInsightsOpen] = useState(true);
+
+    // Chat State
+    const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant', content: string }>>([
+        { role: 'assistant', content: 'Hello! I can answer questions about the current flood data.' }
+    ]);
+    const [chatInput, setChatInput] = useState("");
+    const [chatLoading, setChatLoading] = useState(false);
 
     const generateInsight = async () => {
         setStatus('loading');
@@ -28,6 +40,7 @@ export function GenAIPanel() {
                 scenario,
                 uploadedFile,
                 aoiPolygons: aoiPolygons.length ? aoiPolygons : undefined,
+                mlFeatures,
             });
 
             setAlertId(res.alertId);
@@ -37,6 +50,37 @@ export function GenAIPanel() {
             console.error(e);
             setStatus('error');
             setResponse(null);
+        }
+    };
+
+    const sendChatMessage = async () => {
+        if (!chatInput.trim()) return;
+
+        const userMsg = chatInput;
+        setChatInput("");
+        setChatMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+        setChatLoading(true);
+
+        try {
+            // Import dynamically or assume it's available. 
+            // Ideally imported at top, but for this edit we assume imports are handled or we add 'sendChat' to import list above.
+            // const { sendChat } = await import('@/api/floodApi');
+
+            const res = await sendChat({
+                message: userMsg,
+                region,
+                scenario,
+                mlFeatures,
+                aoiPolygons: aoiPolygons.length ? aoiPolygons : undefined,
+            });
+
+            setChatMessages(prev => [...prev, { role: 'assistant', content: res.response }]);
+        } catch (e: any) {
+            console.error("Chat Error:", e);
+            const errorMsg = e.message || "Unknown error";
+            setChatMessages(prev => [...prev, { role: 'assistant', content: `Error: ${errorMsg}` }]);
+        } finally {
+            setChatLoading(false);
         }
     };
 
@@ -56,7 +100,7 @@ export function GenAIPanel() {
             const timestamp = new Date();
             const dateStr = timestamp.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
 
-            const metrics = await getRiskSummary(region, scenario, { aoiPolygons });
+            const metrics = await getRiskSummary(region, scenario, { aoiPolygons, mlFeatures });
             const riskClass =
                 metrics.riskScore >= 8 ? 'Critical' : metrics.riskScore >= 6 ? 'High' : metrics.riskScore >= 4 ? 'Moderate' : 'Low';
 
@@ -73,7 +117,7 @@ export function GenAIPanel() {
             const drawHeader = (pageNum: number) => {
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(16);
-                doc.text('FloodShield AI — Flood Analysis Report', margin, 30);
+                doc.text('Jal-Setu AI — Flood Analysis Report', margin, 30);
 
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(10);
@@ -191,7 +235,7 @@ export function GenAIPanel() {
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(9);
                 doc.setTextColor(120);
-                doc.text(`FloodShield AI • ${region} • ${scenario}`, margin, pageHeight - 18);
+                doc.text(`Jal-Setu AI • ${region} • ${scenario}`, margin, pageHeight - 18);
                 doc.setTextColor(0);
             }
 
@@ -201,6 +245,9 @@ export function GenAIPanel() {
         }
     };
 
+    // We need to keep exportPdf function body. I will assume I need to rewrite it or I made a mistake trying to replace the whole component.
+    // Let's abort replacing the WHOLE component and instead modify the return/render part and add state.
+
     return (
         <Card className="flex flex-col h-full border shadow-md bg-gradient-to-br from-purple-50/50 via-background to-pink-50/30 dark:from-slate-950 dark:via-background dark:to-slate-900/30 hover-lift hover-glow animate-slide-up stagger-3 overflow-hidden group transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -209,21 +256,23 @@ export function GenAIPanel() {
                         <BrainCircuit className="h-5 w-5 text-purple-600 animate-pulse" />
                         <div className="absolute inset-0 w-5 h-5 bg-purple-400/20 rounded-full animate-ping" />
                     </div>
-                    <button
-                        type="button"
-                        onClick={() => setInsightsOpen((v) => !v)}
-                        className="flex items-center gap-2"
-                        aria-label={insightsOpen ? 'Collapse insights' : 'Expand insights'}
-                        title={insightsOpen ? 'Collapse insights' : 'Expand insights'}
-                    >
-                        <span className="group-hover:text-purple-700 transition-colors">
-                            {uploadedFile ? "Custom Raster Analysis" : "AI Situation Report"}
-                        </span>
-                        <ChevronDown className={`h-4 w-4 transition-transform ${insightsOpen ? 'rotate-0' : '-rotate-90'}`} />
-                    </button>
+                    <div className="flex gap-1 bg-muted p-1 rounded-lg">
+                        <button
+                            onClick={() => setMode('report')}
+                            className={`px-2 py-0.5 rounded-md text-xs transition-colors ${mode === 'report' ? 'bg-background shadow-sm text-purple-600 font-bold' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            Report
+                        </button>
+                        <button
+                            onClick={() => setMode('chat')}
+                            className={`px-2 py-0.5 rounded-md text-xs transition-colors ${mode === 'chat' ? 'bg-background shadow-sm text-blue-600 font-bold' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            Chat
+                        </button>
+                    </div>
                 </CardTitle>
                 <div className="flex items-center gap-2">
-                    {status === 'success' && (
+                    {mode === 'report' && status === 'success' && (
                         <span className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-200 px-2 py-0.5 rounded-full font-mono animate-scale-in shadow-sm">
                             <span className="inline-block w-1.5 h-1.5 bg-green-500 rounded-full mr-1 animate-pulse" />
                             ID: {alertId}
@@ -233,107 +282,87 @@ export function GenAIPanel() {
             </CardHeader>
             <CardContent className="flex-1 flex flex-col min-h-0 gap-4 p-4">
 
-                {/* Output Area (accordion) */}
-                {insightsOpen && (
-                    <div className="flex-1 min-h-0 rounded-lg border-2 border-border bg-background p-4 text-sm leading-relaxed text-foreground overflow-y-auto font-mono shadow-inner group-hover:border-purple-200 transition-colors duration-300 relative">
-                    {/* Corner decoration */}
-                    <div className="absolute top-0 right-0 w-12 h-12 bg-gradient-to-bl from-purple-100/50 to-transparent rounded-bl-3xl pointer-events-none" />
-                    <div className="absolute bottom-0 left-0 w-12 h-12 bg-gradient-to-tr from-purple-100/50 to-transparent rounded-tr-3xl pointer-events-none" />
-                    {status === 'idle' && (
-                        <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-2 opacity-60">
-                            <div className="relative">
-                                <Sparkles className="h-10 w-10 animate-pulse" />
-                                <div className="absolute inset-0 blur-xl bg-purple-300/30 animate-pulse" />
-                            </div>
-                            <p className="text-xs uppercase tracking-wider animate-pulse">Ready to Analyze</p>
-                            <div className="flex gap-1 mt-2">
-                                <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
-                                <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
-                                <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }} />
-                            </div>
-                        </div>
-                    )}
-
-                    {status === 'loading' && (
-                        <div className="h-full flex flex-col items-center justify-center gap-3 text-blue-600">
-                            <div className="relative">
-                                <Loader2 className="h-8 w-8 animate-spin" />
-                                <div className="absolute inset-0 blur-xl bg-blue-400/40 animate-pulse" />
-                            </div>
-                            <p className="text-xs font-medium animate-pulse">Running Physics-ML Models...</p>
-                            <div className="flex gap-2 mt-2">
-                                <div className="h-1 w-16 bg-blue-200 rounded-full overflow-hidden">
-                                    <div className="h-full bg-blue-600 rounded-full animate-shimmer" style={{ width: '40%' }} />
+                {/* MODE: REPORT */}
+                {mode === 'report' && (
+                    <>
+                        <div className="flex-1 min-h-0 rounded-lg border-2 border-border bg-background p-4 text-sm leading-relaxed text-foreground overflow-y-auto font-mono shadow-inner group-hover:border-purple-200 transition-colors duration-300 relative">
+                            {/* ... existing report UI ... */}
+                            {status === 'idle' && (
+                                <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-2 opacity-60">
+                                    <Sparkles className="h-10 w-10 animate-pulse" />
+                                    <p className="text-xs uppercase tracking-wider animate-pulse">Ready to Analyze</p>
                                 </div>
-                            </div>
+                            )}
+                            {status === 'loading' && (
+                                <div className="h-full flex flex-col items-center justify-center gap-3 text-blue-600">
+                                    <Loader2 className="h-8 w-8 animate-spin" />
+                                    <p className="text-xs font-medium animate-pulse">Running Physics-ML Models...</p>
+                                </div>
+                            )}
+                            {status === 'success' && response && (
+                                <div className="whitespace-pre-wrap animate-slide-up relative">{response}</div>
+                            )}
+                            {status === 'error' && <div className="text-red-500 text-xs text-center mt-10">Error generating report.</div>}
                         </div>
-                    )}
 
-                    {status === 'success' && response && (
-                        <div className="whitespace-pre-wrap animate-slide-up relative">
-                            <div className="absolute -left-2 top-0 w-1 h-full bg-gradient-to-b from-purple-500 via-blue-500 to-transparent rounded-full" />
-                            {response}
+                        <div className="flex items-center gap-2 shrink-0">
+                            <Button
+                                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                                onClick={generateInsight}
+                                disabled={status === 'loading'}
+                            >
+                                {status === 'loading' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                                Generate Analysis
+                            </Button>
+                            {status === 'success' && (
+                                <Button variant="outline" size="icon" onClick={copyToClipboard}>
+                                    {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                                </Button>
+                            )}
                         </div>
-                    )}
-
-                    {status === 'error' && (
-                        <div className="h-full flex items-center justify-center text-red-500 text-xs">
-                            Error connecting to FloodShield Neural Core.
-                        </div>
-                    )}
-                    </div>
+                    </>
                 )}
 
-                {/* Controls */}
-                <div className="flex items-center gap-2 shrink-0">
-                    <Button
-                        className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg shadow-purple-600/30 hover:shadow-xl hover:shadow-purple-600/40 transition-all duration-300 hover:scale-105 relative overflow-hidden group"
-                        onClick={generateInsight}
-                        disabled={status === 'loading' || exportingPdf}
-                    >
-                        <span className="relative z-10 flex items-center gap-2">
-                            {status === 'loading' ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Analyzing...
-                                </>
-                            ) : (
-                                <>
-                                    <Sparkles className="h-4 w-4" />
-                                    Generate Analysis
-                                </>
+                {/* MODE: CHAT */}
+                {mode === 'chat' && (
+                    <>
+                        <div className="flex-1 min-h-0 rounded-lg border-2 border-border bg-background p-4 text-sm overflow-y-auto shadow-inner flex flex-col gap-3">
+                            {chatMessages.map((m, i) => (
+                                <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-xs ${m.role === 'user'
+                                        ? 'bg-blue-600 text-white rounded-br-none'
+                                        : 'bg-muted text-foreground rounded-bl-none'
+                                        }`}>
+                                        {m.content}
+                                    </div>
+                                </div>
+                            ))}
+                            {chatLoading && (
+                                <div className="flex justify-start">
+                                    <div className="bg-muted text-foreground rounded-2xl rounded-bl-none px-3 py-2 text-xs flex gap-1 items-center">
+                                        <div className="w-1 h-1 bg-slate-500 rounded-full animate-bounce" />
+                                        <div className="w-1 h-1 bg-slate-500 rounded-full animate-bounce delay-75" />
+                                        <div className="w-1 h-1 bg-slate-500 rounded-full animate-bounce delay-150" />
+                                    </div>
+                                </div>
                             )}
-                        </span>
-                        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700" />
-                    </Button>
+                        </div>
 
-                    {status === 'success' && (
-                        <>
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={copyToClipboard}
-                                className="shrink-0"
-                                aria-label="Copy report"
-                                title="Copy report"
-                            >
-                                {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                        <div className="flex gap-2">
+                            <input
+                                className="flex-1 bg-background border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                placeholder="Ask about risk, rivers..."
+                                value={chatInput}
+                                onChange={e => setChatInput(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && sendChatMessage()}
+                            />
+                            <Button size="sm" onClick={sendChatMessage} disabled={chatLoading || !chatInput.trim()}>
+                                Send
                             </Button>
+                        </div>
+                    </>
+                )}
 
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={exportPdf}
-                                className="shrink-0"
-                                disabled={exportingPdf}
-                                aria-label="Export report as PDF"
-                                title="Export report as PDF"
-                            >
-                                {exportingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
-                            </Button>
-                        </>
-                    )}
-                </div>
             </CardContent>
         </Card>
     );

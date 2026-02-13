@@ -15,35 +15,30 @@ import Sketch from '@arcgis/core/widgets/Sketch';
 import { useStore, type AoiPolygon, type Region, type Scenario } from '@/store/useStore';
 import { getPolygonsStorageKey, useAuth } from '@/auth/AuthProvider';
 import { GoogleEarthMap } from './GoogleEarthMap';
-
-type RegionBounds = { minLon: number; maxLon: number; minLat: number; maxLat: number };
+import { getRiverGeometry } from '@/api/floodApi';
+import type { GeoJSONFeatureCollection } from '@/api/types';
 
 type RegionConfig = {
     center: [number, number];
     zoom: number;
-    bounds: RegionBounds;
 };
 
 const REGION_CONFIG: Record<Region, RegionConfig> = {
     Bihar: {
         center: [85.3131, 25.0961],
         zoom: 8,
-        bounds: { minLon: 84, maxLon: 86, minLat: 24, maxLat: 26 },
     },
     Uttarakhand: {
         center: [79.0193, 30.0668],
         zoom: 9,
-        bounds: { minLon: 78, maxLon: 80, minLat: 29, maxLat: 31 },
     },
     Jharkhand: {
         center: [85.2799, 23.6102],
         zoom: 8,
-        bounds: { minLon: 83.2, maxLon: 87.0, minLat: 22.0, maxLat: 25.0 },
     },
     'Uttar Pradesh': {
         center: [80.9462, 26.8467],
         zoom: 7,
-        bounds: { minLon: 77.0, maxLon: 84.5, minLat: 23.7, maxLat: 29.8 },
     },
 };
 
@@ -51,27 +46,10 @@ function getRegionCenter(region: Region): [number, number] {
     return REGION_CONFIG[region].center;
 }
 
-function getRegionRings(region: Region): number[][][] {
-    const b = REGION_CONFIG[region].bounds;
-    return [[[b.minLon, b.minLat], [b.maxLon, b.minLat], [b.maxLon, b.maxLat], [b.minLon, b.maxLat], [b.minLon, b.minLat]]];
-}
-
 function depthMetersFromScenario(s: Scenario): number {
     if (s === '0m') return 0;
     if (s === '1m') return 1;
     return 2;
-}
-
-function isPointWithinRegionApprox(point: __esri.Point, region: Region): boolean {
-    // Our mock region polygons are simple rectangles; use bbox containment.
-    // longitude/latitude can be nullish depending on spatial reference, so fall back to x/y.
-    const lon = typeof point.longitude === 'number' ? point.longitude : point.x;
-    const lat = typeof point.latitude === 'number' ? point.latitude : point.y;
-
-    if (!Number.isFinite(lon) || !Number.isFinite(lat)) return false;
-
-    const b = REGION_CONFIG[region].bounds;
-    return lon >= b.minLon && lon <= b.maxLon && lat >= b.minLat && lat <= b.maxLat;
 }
 
 function createExtrudedSymbol(color: number[], sizeMeters: number) {
@@ -83,6 +61,48 @@ function createExtrudedSymbol(color: number[], sizeMeters: number) {
             }),
         ],
     });
+}
+
+function convertGeoJSONToPolygons(geojson: GeoJSONFeatureCollection): __esri.Polygon[] {
+    /**
+     * Converts GeoJSON FeatureCollection to ArcGIS Polygon array.
+     * Handles both Polygon and MultiPolygon geometry types.
+     */
+    const polygons: __esri.Polygon[] = [];
+
+    for (const feature of geojson.features) {
+        if (!feature.geometry || !feature.geometry.coordinates) continue;
+
+        try {
+            const polygon = new Polygon({
+                rings: feature.geometry.coordinates as number[][][],
+                spatialReference: { wkid: 4326 }, // WGS84
+            });
+            polygons.push(polygon);
+        } catch (error) {
+            console.warn('Failed to convert GeoJSON feature to polygon:', error);
+        }
+    }
+
+    return polygons;
+}
+
+async function loadRiverGeometry(region: Region, scenario: Scenario): Promise<__esri.Polygon[]> {
+    /**
+     * Fetches river geometry from the backend and converts to ArcGIS Polygons.
+     * Returns empty array on error or for 0m scenario.
+     */
+    if (scenario === '0m') {
+        return []; // No flooding for 0m scenario
+    }
+
+    try {
+        const response = await getRiverGeometry(region, scenario);
+        return convertGeoJSONToPolygons(response.geometry);
+    } catch (error) {
+        console.error('Failed to load river geometry:', error);
+        return [];
+    }
 }
 
 type StoredPolygon = AoiPolygon;
@@ -114,7 +134,7 @@ function ArcGISMapComponent() {
     const viewRef = useRef<SceneView | null>(null);
     const layersRef = useRef<Record<string, GraphicsLayer>>({});
 
-    const { region, activeLayer, scenario, setAoiPolygons } = useStore();
+    const { region, activeLayer, scenario, setAoiPolygons, setMapSample } = useStore();
     const { mode, user } = useAuth();
 
     const initialRegionRef = useRef(region);
@@ -172,45 +192,7 @@ function ArcGISMapComponent() {
 
         viewRef.current = view;
 
-        // --- MOCK LAYERS (Depth + Risk + Velocity) ---
-        const makePolygon = () =>
-            new Polygon({
-                rings: getRegionRings(initialRegionRef.current),
-            });
-
-        const createScenarioLayer = (id: string, title: string, color: number[], extrudeMeters: number) => {
-            const layer = new GraphicsLayer({
-                id,
-                title,
-                visible: false,
-                elevationInfo: { mode: 'on-the-ground' },
-            });
-
-            const graphic = new Graphic({
-                geometry: makePolygon(),
-                symbol: createExtrudedSymbol(color, extrudeMeters),
-            });
-
-            layer.add(graphic);
-            return layer;
-        };
-
-        // Depth layers (include 0m so the UI always maps to a layer id)
-        const depth0 = createScenarioLayer('Depth_0m', 'Flood Depth (0m)', [148, 163, 184], 1);
-        const depth1 = createScenarioLayer('Depth_1m', 'Flood Depth (1m)', [31, 78, 121], 600);
-        const depth2 = createScenarioLayer('Depth_2m', 'Flood Depth (2m)', [20, 50, 90], 1200);
-
-        // Risk layers (mock) - scenario-aware
-        const risk0 = createScenarioLayer('Risk_0m', 'Risk (0m)', [34, 197, 94], 80);
-        const risk1 = createScenarioLayer('Risk_1m', 'Risk (1m)', [255, 165, 0], 140);
-        const risk2 = createScenarioLayer('Risk_2m', 'Risk (2m)', [255, 59, 48], 200);
-
-        // Velocity layers (mock) - scenario-aware
-        const vel0 = createScenarioLayer('Velocity_0m', 'Velocity (0m)', [168, 85, 247], 90);
-        const vel1 = createScenarioLayer('Velocity_1m', 'Velocity (1m)', [128, 0, 128], 160);
-        const vel2 = createScenarioLayer('Velocity_2m', 'Velocity (2m)', [79, 70, 229], 240);
-
-        // User-drawn polygons
+        // User-drawn polygons (Created synchronously so it's available for the Sketch widget)
         const sketchLayer = new GraphicsLayer({
             id: 'User_Polygons',
             title: 'User Polygons',
@@ -218,31 +200,88 @@ function ArcGISMapComponent() {
             visible: true,
         });
 
-        webmap.addMany([
-            depth0,
-            depth1,
-            depth2,
-            risk0,
-            risk1,
-            risk2,
-            vel0,
-            vel1,
-            vel2,
-            sketchLayer,
-        ]);
+        // --- MOCK LAYERS (Depth + Risk + Velocity) ---
+        const createScenarioLayer = async (
+            id: string,
+            title: string,
+            color: number[],
+            extrudeMeters: number,
+            region: Region,
+            scenario: Scenario
+        ) => {
+            const layer = new GraphicsLayer({
+                id,
+                title,
+                visible: false,
+                elevationInfo: { mode: 'on-the-ground' },
+            });
 
-        layersRef.current = {
-            Depth_0m: depth0,
-            Depth_1m: depth1,
-            Depth_2m: depth2,
-            Risk_0m: risk0,
-            Risk_1m: risk1,
-            Risk_2m: risk2,
-            Velocity_0m: vel0,
-            Velocity_1m: vel1,
-            Velocity_2m: vel2,
-            User_Polygons: sketchLayer,
+            // Load river-based geometries
+            const polygons = await loadRiverGeometry(region, scenario);
+
+            // Create a graphic for each river polygon
+            polygons.forEach(polygon => {
+                const graphic = new Graphic({
+                    geometry: polygon,
+                    symbol: createExtrudedSymbol(color, extrudeMeters),
+                });
+                layer.add(graphic);
+            });
+
+            return layer;
         };
+
+        // Create all layers asynchronously with river geometries
+        const initializeLayers = async () => {
+            // Depth layers (include 0m so the UI always maps to a layer id)
+            // 0m: Light Blue (Normal), 1m: Medium Blue, 2m: Deep Navy
+            const depth0 = await createScenarioLayer('Depth_0m', 'Flood Depth (0m)', [100, 181, 246], 10, initialRegionRef.current, '0m');
+            const depth1 = await createScenarioLayer('Depth_1m', 'Flood Depth (1m)', [33, 150, 243], 600, initialRegionRef.current, '1m');
+            const depth2 = await createScenarioLayer('Depth_2m', 'Flood Depth (2m)', [13, 71, 161], 1200, initialRegionRef.current, '2m');
+
+            // Risk layers - scenario-aware with river geometries
+            // 0m: Green (Safe), 1m: Orange (Warning), 2m: Red (Critical)
+            const risk0 = await createScenarioLayer('Risk_0m', 'Risk (0m)', [76, 175, 80], 50, initialRegionRef.current, '0m');
+            const risk1 = await createScenarioLayer('Risk_1m', 'Risk (1m)', [255, 152, 0], 140, initialRegionRef.current, '1m');
+            const risk2 = await createScenarioLayer('Risk_2m', 'Risk (2m)', [211, 47, 47], 200, initialRegionRef.current, '2m');
+
+            // Velocity layers - scenario-aware with river geometries
+            // 0m: Blue-Purple (Low), 1m: Purple (Med), 2m: Deep Violet/Indigo (High)
+            const vel0 = await createScenarioLayer('Velocity_0m', 'Velocity (0m)', [179, 157, 219], 60, initialRegionRef.current, '0m');
+            const vel1 = await createScenarioLayer('Velocity_1m', 'Velocity (1m)', [124, 77, 255], 160, initialRegionRef.current, '1m');
+            const vel2 = await createScenarioLayer('Velocity_2m', 'Velocity (2m)', [101, 31, 255], 240, initialRegionRef.current, '2m');
+
+            webmap.addMany([
+                depth0,
+                depth1,
+                depth2,
+                risk0,
+                risk1,
+                risk2,
+                vel0,
+                vel1,
+                vel2,
+                sketchLayer,
+            ]);
+
+            layersRef.current = {
+                Depth_0m: depth0,
+                Depth_1m: depth1,
+                Depth_2m: depth2,
+                Risk_0m: risk0,
+                Risk_1m: risk1,
+                Risk_2m: risk2,
+                Velocity_0m: vel0,
+                Velocity_1m: vel1,
+                Velocity_2m: vel2,
+                User_Polygons: sketchLayer,
+            };
+        };
+
+        // Initialize layers asynchronously
+        initializeLayers().catch(error => {
+            console.error('Failed to initialize map layers:', error);
+        });
 
         // --- WIDGETS ---
         const fullscreen = new Fullscreen({ view });
@@ -280,10 +319,37 @@ function ArcGISMapComponent() {
                     elevationM = typeof mp.z === 'number' ? mp.z : null;
                 }
 
-                // Flood depth (mock): only meaningful within our region bbox.
-                // If you later swap to a real RasterLayer/FeatureLayer, replace this with hitTest/raster sampling.
-                const within = isPointWithinRegionApprox(mp, regionRef.current);
-                const depthM = within ? depthMetersFromScenario(scenarioRef.current) : 0;
+                // Flood depth: check if cursor is over a flood layer using hitTest
+                let depthM = 0;
+                try {
+                    const hitResponse = await viewRef.current.hitTest({ x, y });
+                    if (hitResponse.results.length > 0) {
+                        for (const result of hitResponse.results) {
+                            if (result.type === 'graphic') {
+                                const graphic = result.graphic;
+                                const layerId = graphic.layer?.id;
+
+                                // Check if this is a flood layer (Depth, Risk, or Velocity)
+                                const layerIdStr = typeof layerId === 'string' ? layerId : String(layerId);
+                                if (layerIdStr && (layerIdStr.startsWith('Depth_') || layerIdStr.startsWith('Risk_') || layerIdStr.startsWith('Velocity_'))) {
+                                    // Extract scenario from layer ID
+                                    const parts = layerIdStr.split('_');
+                                    if (parts.length >= 2) {
+                                        const scenario = parts[1] as Scenario;
+                                        depthM = depthMetersFromScenario(scenario);
+                                        break; // Found a flood layer, use its depth
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    // If hitTest fails, fall back to 0m
+                    depthM = 0;
+                }
+
+                // Save last map sample for ML auto-fill.
+                setMapSample({ lon, lat, elevationM });
 
                 const content = `
 <div style="font-size:12px;line-height:1.4">
@@ -292,7 +358,7 @@ function ArcGISMapComponent() {
   <div><b>Depth</b>: <span style="font-family:monospace">${depthM} m</span></div>
 </div>`;
 
-                if (!view.popup) return;
+                if (!view.popup || typeof view.popup.open !== 'function') return;
 
                 view.popup.open({
                     title: 'Point info',
@@ -442,7 +508,7 @@ function ArcGISMapComponent() {
         };
     }, []);
 
-    // Re-center camera + update mock layer geometries when region changes
+    // Re-center camera + reload river geometries when region changes
     useEffect(() => {
         if (!viewRef.current || viewRef.current.destroyed) return;
 
@@ -456,14 +522,42 @@ function ArcGISMapComponent() {
             }
         });
 
-        const polygon = new Polygon({ rings: getRegionRings(region) });
-        for (const layer of Object.values(layersRef.current)) {
-            // Only update our mock scenario layers; do not touch user-drawn polygons.
-            if (layer.id === 'User_Polygons') continue;
-            layer.graphics.forEach((g) => {
-                g.geometry = polygon;
-            });
-        }
+        // Reload all scenario layers with new river geometries for the selected region
+        const reloadLayers = async () => {
+            for (const [layerId, layer] of Object.entries(layersRef.current)) {
+                // Skip user-drawn polygons
+                if (layerId === 'User_Polygons') continue;
+
+                // Extract scenario from layer ID (e.g., "Depth_1m" -> "1m")
+                const parts = layerId.split('_');
+                if (parts.length < 2) continue;
+                const scenario = parts[1] as Scenario;
+
+                // Store the current symbol for reuse
+                const existingSymbol = layer.graphics.length > 0
+                    ? layer.graphics.getItemAt(0)?.symbol // Fix undefined check here
+                    : null;
+
+                // Clear existing graphics
+                layer.removeAll();
+
+                // Load new river geometries for this region/scenario
+                const polygons = await loadRiverGeometry(region, scenario);
+
+                // Add new graphics with river geometries
+                polygons.forEach(polygon => {
+                    const graphic = new Graphic({
+                        geometry: polygon,
+                        symbol: existingSymbol || createExtrudedSymbol([100, 100, 100], 100),
+                    });
+                    layer.add(graphic);
+                });
+            }
+        };
+
+        reloadLayers().catch(error => {
+            console.error('Failed to reload river geometries:', error);
+        });
     }, [region]);
 
     // Switching between demo/auth should show/hide persisted polygons.

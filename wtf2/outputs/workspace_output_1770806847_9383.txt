@@ -1,0 +1,19 @@
+Generating regional training data...
+Traceback (most recent call last):
+  File "/workspace/ml/generate_regional_data.py", line 182, in <module>
+    main()
+  File "/workspace/ml/generate_regional_data.py", line 155, in main
+    df.to_csv('data/regional_training_data.csv', index=False)
+  File "/usr/local/lib/python3.11/site-packages/pandas/core/generic.py", line 3988, in to_csv
+    return DataFrameRenderer(formatter).to_csv(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/pandas/io/formats/format.py", line 1025, in to_csv
+    csv_formatter.save()
+  File "/usr/local/lib/python3.11/site-packages/pandas/io/formats/csvs.py", line 251, in save
+    with get_handle(
+         ^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/pandas/io/common.py", line 793, in get_handle
+    check_parent_directory(str(handle))
+  File "/usr/local/lib/python3.11/site-packages/pandas/io/common.py", line 652, in check_parent_directory
+    raise OSError(rf"Cannot save file into a non-existent directory: '{parent}'")
+OSError: Cannot save file into a non-existent directory: 'data'

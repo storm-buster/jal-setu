@@ -1,0 +1,51 @@
+Generating regional training data...
+Generated 1000 samples
+
+Region distribution:
+region
+Jharkhand    507
+Bihar        493
+Name: count, dtype: int64
+
+District distribution:
+district
+Dhanbad        136
+Jamshedpur     126
+Ranchi         124
+Hazaribagh     121
+Patna          112
+Bhagalpur      101
+Muzaffarpur     94
+Gaya            93
+Begusarai       93
+Name: count, dtype: int64
+
+Risk class distribution:
+risk_class
+1    589
+2    306
+0    105
+Name: count, dtype: int64
+
+
+Statistics by Region:
+============================================================
+
+Bihar:
+  Samples: 493
+  Avg Elevation: 114.3m
+  Avg Slope: 7.7°
+  Avg Flood Depth: 2.6m
+  High Risk %: 48.9%
+  Districts: Patna, Muzaffarpur, Gaya, Bhagalpur, Begusarai
+
+Jharkhand:
+  Samples: 507
+  Avg Elevation: 275.2m
+  Avg Slope: 22.4°
+  Avg Flood Depth: 1.6m
+  High Risk %: 12.8%
+  Districts: Ranchi, Hazaribagh, Dhanbad, Jamshedpur
+
+============================================================
+Data saved to: data/regional_training_data.csv

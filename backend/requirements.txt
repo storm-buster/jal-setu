@@ -2,3 +2,10 @@ fastapi==0.115.8
 uvicorn[standard]==0.30.6
 pydantic==2.10.6
 python-multipart==0.0.12
+shapely==2.0.2
+
+# wtf2 ML model integration
+scikit-learn==1.3.2
+pandas==2.1.3
+numpy==1.26.2
+joblib==1.3.2

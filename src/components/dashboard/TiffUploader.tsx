@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, type ChangeEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, FileType, CheckCircle2, Loader2, X } from 'lucide-react';
@@ -6,12 +6,12 @@ import { useStore } from '@/store/useStore';
 import * as GeoTIFF from 'geotiff';
 
 export function TiffUploader() {
-    const { setUploadedFile, uploadedFile } = useStore();
+    const { setUploadedFile, uploadedFile, setTiffStats } = useStore();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
 
@@ -31,21 +31,62 @@ export function TiffUploader() {
                 size: file.size
             };
 
+            // Downsample and compute basic raster stats (first band) for ML feature derivation.
+            // This keeps things fast even for large rasters.
+            let stats = null as null | { mean: number; min: number; max: number; sampleCount: number };
+            try {
+                const width = Math.min(96, image.getWidth());
+                const height = Math.min(96, image.getHeight());
+                const noData = (image as unknown as { getGDALNoData?: () => unknown }).getGDALNoData?.();
+
+                const rasters = await (image as unknown as { readRasters: (opts: unknown) => Promise<unknown> }).readRasters({
+                    samples: [0],
+                    width,
+                    height,
+                    interleave: true,
+                });
+
+                const data = rasters as unknown as ArrayLike<number>;
+                let min = Number.POSITIVE_INFINITY;
+                let max = Number.NEGATIVE_INFINITY;
+                let sum = 0;
+                let count = 0;
+
+                for (let i = 0; i < data.length; i++) {
+                    const v = Number(data[i]);
+                    if (!Number.isFinite(v)) continue;
+                    if (noData != null && v === Number(noData)) continue;
+                    min = Math.min(min, v);
+                    max = Math.max(max, v);
+                    sum += v;
+                    count += 1;
+                }
+
+                if (count > 0) {
+                    stats = { mean: sum / count, min, max, sampleCount: count };
+                }
+            } catch (e: unknown) {
+                console.warn('Failed to compute raster stats:', e);
+            }
+
             // Simulate "Analysis" time for realism
             setTimeout(() => {
                 setUploadedFile(metadata);
+                setTiffStats(stats);
                 setLoading(false);
             }, 1500);
 
         } catch (err) {
             console.error("Error parsing TIFF:", err);
             setError("Invalid GeoTIFF file. Please upload a valid raster.");
+            setTiffStats(null);
             setLoading(false);
         }
     };
 
     const clearFile = () => {
         setUploadedFile(null);
+        setTiffStats(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 

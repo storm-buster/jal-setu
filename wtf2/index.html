@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jal-Setu AI - Flood Risk Decision Support System</title>
+    <link rel="stylesheet" href="static/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>
+</head>
+
+<body>
+    <header>
+        <h1><i class="fas fa-water"></i> Jal-Setu AI</h1>
+        <p>Physics-First Flood Risk Decision Support System</p>
+    </header>
+
+    <div class="container">
+        <!-- Alert Messages -->
+        <div id="alert-message" class="alert alert-info"></div>
+
+        <div class="main-content">
+            <!-- Left Column: Prediction Form -->
+            <div class="prediction-section">
+                <div class="card">
+                    <h2><i class="fas fa-calculator"></i> Flood Risk Prediction</h2>
+
+                    <form id="prediction-form">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="elevation">Elevation (meters)</label>
+                                <input type="number" id="elevation" name="elevation" step="0.1" min="0" required
+                                    placeholder="e.g., 125.5" value="125.5">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="slope">Slope (degrees)</label>
+                                <input type="number" id="slope" name="slope" step="0.1" min="0" required
+                                    placeholder="e.g., 12.3" value="12.3">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="flow_accumulation">Flow Accumulation</label>
+                                <input type="number" id="flow_accumulation" name="flow_accumulation" step="0.01" min="0"
+                                    required placeholder="e.g., 2345.67" value="2345.67">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="distance_to_river">Distance to River (meters)</label>
+                                <input type="number" id="distance_to_river" name="distance_to_river" step="0.01" min="0"
+                                    required placeholder="e.g., 123.45" value="123.45">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="flood_depth">Flood Depth (meters)</label>
+                                <input type="number" id="flood_depth" name="flood_depth" step="0.1" min="0" required
+                                    placeholder="e.g., 2.3" value="2.3">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="velocity_index">Velocity Index (0-1)</label>
+                                <input type="number" id="velocity_index" name="velocity_index" step="0.01" min="0"
+                                    max="1" required placeholder="e.g., 0.78" value="0.78">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="lulc_agriculture">Agriculture Land (0-1)</label>
+                                <input type="number" id="lulc_agriculture" name="lulc_agriculture" step="0.01" min="0"
+                                    max="1" required placeholder="e.g., 0.65" value="0.65">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="lulc_urban">Urban Land (0-1)</label>
+                                <input type="number" id="lulc_urban" name="lulc_urban" step="0.01" min="0" max="1"
+                                    required placeholder="e.g., 0.15" value="0.15">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="population_density">Population Density (people/sq km)</label>
+                                <input type="number" id="population_density" name="population_density" step="1" min="0"
+                                    required placeholder="e.g., 856" value="856">
+                            </div>
+                        </div>
+
+                        <div class="form-grid" style="margin-top: 15px;">
+                            <div class="form-group">
+                                <label for="location_name">Location Name</label>
+                                <input type="text" id="location_name" name="location_name"
+                                    placeholder="e.g., Patna District" value="Patna District">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="district">District</label>
+                                <input type="text" id="district" name="district" placeholder="e.g., Patna"
+                                    value="Patna">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn" id="predict-btn">
+                            <i class="fas fa-chart-line"></i> Predict Risk
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Prediction Results -->
+                <div class="card" id="results-card" style="display: none;">
+                    <h2><i class="fas fa-chart-bar"></i> Prediction Results</h2>
+
+                    <div id="risk-result" class="risk-result">
+                        <h3 id="risk-label">HIGH RISK</h3>
+                        <p id="risk-confidence">Confidence: 85%</p>
+
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" id="confidence-fill" style="width: 85%;"></div>
+                        </div>
+
+                        <div class="probabilities">
+                            <div class="prob-item">
+                                <div class="label">Low</div>
+                                <div class="value" id="prob-low">5%</div>
+                            </div>
+                            <div class="prob-item">
+                                <div class="label">Medium</div>
+                                <div class="value" id="prob-medium">10%</div>
+                            </div>
+                            <div class="prob-item">
+                                <div class="label">High</div>
+                                <div class="value" id="prob-high">85%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <button class="btn" id="get-summary-btn" style="width: 100%;">
+                            <i class="fas fa-file-alt"></i> Generate AI Summary
+                        </button>
+                        <button class="btn" id="get-action-plan-btn"
+                            style="width: 100%; margin-top: 10px; background-color: var(--warning-color);">
+                            <i class="fas fa-tasks"></i> Get Action Plan
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Chatbot -->
+            <div class="chatbot-section">
+                <div class="card">
+                    <h2><i class="fas fa-robot"></i> AI Assistant</h2>
+
+                    <div class="chatbot-container">
+                        <div class="chat-messages" id="chat-messages">
+                            <div class="message system">
+                                Welcome to Jal-Setu AI! I'm here to help you understand flood risks and make informed
+                                decisions. Ask me anything about flood prediction, risk factors, or response planning.
+                            </div>
+                        </div>
+
+                        <div class="chat-input-container">
+                            <input type="text" id="chat-input" placeholder="Ask about flood risk..."
+                                onkeypress="if(event.key === 'Enter') sendMessage()">
+                            <button class="btn" id="send-btn" onclick="sendMessage()">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 15px;">
+                        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 10px;">
+                            Quick Questions:
+                        </p>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            <button class="btn" onclick="askQuickQuestion('What does high flood risk mean?')"
+                                style="font-size: 12px; padding: 8px 12px;">
+                                <i class="fas fa-question-circle"></i> What is high risk?
+                            </button>
+                            <button class="btn" onclick="askQuickQuestion('What should we do now?')"
+                                style="font-size: 12px; padding: 8px 12px; background-color: var(--warning-color);">
+                                <i class="fas fa-exclamation-triangle"></i> What to do?
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Status -->
+                <div class="card">
+                    <h2><i class="fas fa-info-circle"></i> System Status</h2>
+                    <div style="font-size: 14px;">
+                        <p><strong>ML Model:</strong> <span id="model-status" style="color: var(--success-color);">✓
+                                Loaded</span></p>
+                        <p><strong>Chatbot:</strong> <span id="chatbot-status" style="color: var(--success-color);">✓
+                                Ready</span></p>
+                        <p><strong>API Version:</strong> 1.0.0</p>
+                        <p><strong>Last Update:</strong> <span id="last-update">-</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Jal-Setu AI - Physics-First Flood Risk Decision Support System</p>
+        <p style="font-size: 14px; margin-top: 5px;">Powered by ArcGIS Hydrology + Machine Learning + GenAI</p>
+    </footer>
+
+    <script>
+        const API_BASE = 'https://floodshield-002xo.app.super.myninja.ai';
+        let lastPrediction = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function () {
+            checkSystemHealth();
+            updateTimestamp();
+        });
+
+        // Check system health
+        async function checkSystemHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+
+                document.getElementById('model-status').innerHTML = data.model_loaded
+                    ? '<span style="color: var(--success-color);">✓ Loaded</span>'
+                    : '<span style="color: var(--danger-color);">✗ Not Loaded</span>';
+
+                document.getElementById('last-update').textContent = new Date().toLocaleString();
+            } catch (error) {
+                showAlert('Unable to connect to server. Please ensure the backend is running.', 'error');
+            }
+        }
+
+        // Update timestamp
+        function updateTimestamp() {
+            document.getElementById('last-update').textContent = new Date().toLocaleString();
+        }
+
+        // Show alert message
+        function showAlert(message, type = 'info') {
+            const alertEl = document.getElementById('alert-message');
+            alertEl.textContent = message;
+            alertEl.className = `alert alert-${type} show`;
+
+            setTimeout(() => {
+                alertEl.classList.remove('show');
+            }, 5000);
+        }
+
+        // Handle prediction form submission
+        document.getElementById('prediction-form').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const predictBtn = document.getElementById('predict-btn');
+            predictBtn.disabled = true;
+            predictBtn.innerHTML = '<span class="loading"></span> Predicting...';
+
+            try {
+                const formData = new FormData(this);
+                const data = Object.fromEntries(formData.entries());
+
+                // Convert numeric values
+                const numericFields = ['elevation', 'slope', 'flow_accumulation', 'distance_to_river',
+                    'flood_depth', 'velocity_index', 'lulc_agriculture', 'lulc_urban', 'population_density'];
+
+                numericFields.forEach(field => {
+                    data[field] = parseFloat(data[field]);
+                });
+
+                const response = await fetch(`${API_BASE}/predict`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Prediction failed');
+                }
+
+                const result = await response.json();
+                lastPrediction = result;
+
+                displayPredictionResult(result);
+                showAlert('Prediction completed successfully!', 'success');
+
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Failed to get prediction. Please try again.', 'error');
+            } finally {
+                predictBtn.disabled = false;
+                predictBtn.innerHTML = '<i class="fas fa-chart-line"></i> Predict Risk';
+            }
+        });
+
+        // Display prediction results
+        function displayPredictionResult(result) {
+            const resultsCard = document.getElementById('results-card');
+            const riskResult = document.getElementById('risk-result');
+
+            resultsCard.style.display = 'block';
+
+            // Set risk label and styling
+            const riskLabel = document.getElementById('risk-label');
+            riskLabel.textContent = `${result.risk_label.toUpperCase()} RISK`;
+
+            riskResult.className = 'risk-result';
+            if (result.risk_label === 'Low') {
+                riskResult.classList.add('risk-low');
+            } else if (result.risk_label === 'Medium') {
+                riskResult.classList.add('risk-medium');
+            } else {
+                riskResult.classList.add('risk-high');
+            }
+
+            // Set confidence
+            const confidence = (result.confidence * 100).toFixed(1);
+            document.getElementById('risk-confidence').textContent = `Confidence: ${confidence}%`;
+            document.getElementById('confidence-fill').style.width = `${confidence}%`;
+
+            // Set probabilities
+            document.getElementById('prob-low').textContent = `${(result.probabilities.low * 100).toFixed(1)}%`;
+            document.getElementById('prob-medium').textContent = `${(result.probabilities.medium * 100).toFixed(1)}%`;
+            document.getElementById('prob-high').textContent = `${(result.probabilities.high * 100).toFixed(1)}%`;
+
+            // Scroll to results
+            resultsCard.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Generate AI summary
+        document.getElementById('get-summary-btn').addEventListener('click', async function () {
+            if (!lastPrediction) {
+                showAlert('Please make a prediction first.', 'warning');
+                return;
+            }
+
+            this.disabled = true;
+            this.innerHTML = '<span class="loading"></span> Generating...';
+
+            try {
+                const response = await fetch(`${API_BASE}/chat/summary`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(lastPrediction)
+                });
+
+                const result = await response.json();
+
+                // Add summary to chat
+                addMessage('assistant', result.summary);
+
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Failed to generate summary.', 'error');
+            } finally {
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-file-alt"></i> Generate AI Summary';
+            }
+        });
+
+        // Generate action plan
+        document.getElementById('get-action-plan-btn').addEventListener('click', async function () {
+            if (!lastPrediction) {
+                showAlert('Please make a prediction first.', 'warning');
+                return;
+            }
+
+            this.disabled = true;
+            this.innerHTML = '<span class="loading"></span> Generating...';
+
+            try {
+                const response = await fetch(`${API_BASE}/chat/action-plan`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(lastPrediction)
+                });
+
+                const result = await response.json();
+
+                // Add action plan to chat
+                addMessage('assistant', result.action_plan);
+
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('Failed to generate action plan.', 'error');
+            } finally {
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-tasks"></i> Get Action Plan';
+            }
+        });
+
+        // Send message to chatbot
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            // Add user message
+            addMessage('user', message);
+            input.value = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        previous_risk_data: lastPrediction
+                    })
+                });
+
+                const result = await response.json();
+                addMessage('assistant', result.response);
+
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('system', 'Sorry, I encountered an error. Please try again.');
+            }
+        }
+
+        // Add message to chat
+        function addMessage(type, text) {
+            const messagesContainer = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = text;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // Quick question buttons
+        function askQuickQuestion(question) {
+            document.getElementById('chat-input').value = question;
+            sendMessage();
+        }
+    </script>
+</body>
+
+</html>

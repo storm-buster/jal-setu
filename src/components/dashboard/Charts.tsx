@@ -16,6 +16,7 @@ import { useStore } from '@/store/useStore';
 import { analyzeRegion } from '@/api/floodApi';
 import type { AnalyzeRegionResponse } from '@/api/types';
 import { AlertCircle } from 'lucide-react';
+import { useMlFeatures } from '@/ml/useMlFeatures';
 
 const AXIS_TICK = { fontSize: 11, fill: 'hsl(var(--muted-foreground))' };
 
@@ -78,6 +79,7 @@ function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
 
 export function AnalyticsSection() {
     const { region, scenario, aoiPolygons } = useStore();
+    const mlFeatures = useMlFeatures();
 
     const [data, setData] = useState<AnalyzeRegionResponse | null>(null);
     const [loading, setLoading] = useState(true);
@@ -88,7 +90,12 @@ export function AnalyticsSection() {
         setLoading(true);
         setError(null);
 
-        analyzeRegion({ region, scenario, aoiPolygons: aoiPolygons.length ? aoiPolygons : undefined })
+        analyzeRegion({
+            region,
+            scenario,
+            aoiPolygons: aoiPolygons.length ? aoiPolygons : undefined,
+            mlFeatures,
+        })
             .then((res) => {
                 if (cancelled) return;
                 setData(res);
@@ -105,7 +112,7 @@ export function AnalyticsSection() {
         return () => {
             cancelled = true;
         };
-    }, [region, scenario, aoiPolygons]);
+    }, [region, scenario, aoiPolygons, mlFeatures]);
 
     const featureData = useMemo(() => data?.featureImportance ?? [], [data]);
     const impactData = useMemo(() => data?.impactComparison ?? [], [data]);

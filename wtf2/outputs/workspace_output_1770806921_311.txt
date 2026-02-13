@@ -1,0 +1,134 @@
+INFO:__main__:Loading regional training data...
+INFO:flood_risk_model:Training random_forest model...
+INFO:flood_risk_model:Training completed. Accuracy: 0.870
+--- Logging error ---
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/logging/__init__.py", line 1110, in emit
+    msg = self.format(record)
+          ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/logging/__init__.py", line 953, in format
+    return fmt.format(record)
+           ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/logging/__init__.py", line 687, in format
+    record.message = record.getMessage()
+                     ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/logging/__init__.py", line 377, in getMessage
+    msg = msg % self.args
+          ~~~~^~~~~~~~~~~
+TypeError: not all arguments converted during string formatting
+Call stack:
+  File "/workspace/ml/train_regional_model.py", line 148, in <module>
+    model, accuracy = main()
+  File "/workspace/ml/train_regional_model.py", line 64, in main
+    accuracy = model.train(X, y)
+  File "/workspace/ml/flood_risk_model.py", line 123, in train
+    logger.info("\nClassification Report:\n", classification_report(y_test, y_pred))
+Message: '\nClassification Report:\n'
+Arguments: ('              precision    recall  f1-score   support\n\n           0       0.87      0.62      0.72        21\n           1       0.86      0.93      0.89       118\n           2       0.89      0.84      0.86        61\n\n    accuracy                           0.87       200\n   macro avg       0.87      0.80      0.83       200\nweighted avg       0.87      0.87      0.87       200\n',)
+--- Logging error ---
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/logging/__init__.py", line 1110, in emit
+    msg = self.format(record)
+          ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/logging/__init__.py", line 953, in format
+    return fmt.format(record)
+           ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/logging/__init__.py", line 687, in format
+    record.message = record.getMessage()
+                     ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/logging/__init__.py", line 377, in getMessage
+    msg = msg % self.args
+          ~~~~^~~~~~~~~~~
+TypeError: not all arguments converted during string formatting
+Call stack:
+  File "/workspace/ml/train_regional_model.py", line 148, in <module>
+    model, accuracy = main()
+  File "/workspace/ml/train_regional_model.py", line 64, in main
+    accuracy = model.train(X, y)
+  File "/workspace/ml/flood_risk_model.py", line 131, in train
+    logger.info("\nFeature Importance:\n", importance_df)
+Message: '\nFeature Importance:\n'
+Arguments: (                       feature  importance
+3        distance_to_river_log    0.206740
+9        depth_elevation_ratio    0.151858
+4                  flood_depth    0.151458
+8               velocity_index    0.109378
+11         population_exposure    0.075041
+10  slope_velocity_interaction    0.056172
+2        flow_accumulation_log    0.046334
+5             lulc_agriculture    0.044114
+0                    elevation    0.040973
+6                   lulc_urban    0.039741
+1                        slope    0.039638
+7           population_density    0.038554,)
+INFO:flood_risk_model:Model saved to ../models/flood_risk_model.pkl
+======================================================================
+TRAINING Jal-Setu AI MODEL WITH REGIONAL DATA
+======================================================================
+
+📊 Dataset Information:
+   Total Samples: 1000
+   Regions: ['Bihar', 'Jharkhand']
+   Districts: 9
+   Features: 10 (excluding region and district)
+
+📍 Regional Distribution:
+   Bihar: 493 samples (49.3%)
+      Districts: Patna, Muzaffarpur, Gaya, Bhagalpur, Begusarai
+   Jharkhand: 507 samples (50.7%)
+      Districts: Ranchi, Hazaribagh, Dhanbad, Jamshedpur
+
+🎯 Risk Class Distribution:
+   Low Risk (Class 0): 105 samples (10.5%)
+   Medium Risk (Class 1): 589 samples (58.9%)
+   High Risk (Class 2): 306 samples (30.6%)
+
+🔧 Feature Statistics:
+   Elevation: 195.9m (range: 30.0-398.7)
+   Slope: 15.1° (range: 0.5-34.9)
+   Flood Depth: 2.1m (range: 0.2-5.0)
+   Population Density: 635/sq km
+   Velocity Index: 0.69
+
+🤖 Initializing Random Forest Model...
+   Algorithm: Random Forest Classifier
+   Estimators: 100 trees
+   Max Depth: 15
+   Min Samples Split: 5
+   Class Weight: Balanced
+
+🎓 Training Model...
+
+✅ Training Completed!
+   Accuracy: 87.0%
+   Model saved to: ../models/flood_risk_model.pkl
+
+📈 Feature Importance (Top 5):
+   4. distance_to_river_log: 20.7%
+   10. depth_elevation_ratio: 15.2%
+   5. flood_depth: 15.1%
+   9. velocity_index: 10.9%
+   12. population_exposure: 7.5%
+
+🧪 Testing Predictions with Regional Samples:
+
+   Bhagalpur (High Risk Plain Area):
+      Predicted Risk: High (Confidence: 95.9%)
+      Probabilities: Low=0.0%, Medium=4.1%, High=95.9%
+
+   Ranchi (Low Risk Plateau Area):
+      Predicted Risk: Medium (Confidence: 57.9%)
+      Probabilities: Low=38.9%, Medium=57.9%, High=3.2%
+
+   Muzaffarpur (Medium Risk Area):
+      Predicted Risk: Medium (Confidence: 63.3%)
+      Probabilities: Low=0.7%, Medium=63.3%, High=36.0%
+
+======================================================================
+MODEL TRAINING SUMMARY
+======================================================================
+✅ Model trained on 1000 samples from Bihar and Jharkhand
+✅ Accuracy: 87.0%
+✅ Model saved and ready for predictions
+✅ GenAI chatbot can use this model for risk assessment
+======================================================================

@@ -1,4 +1,5 @@
-import { useStore, type Region, type LayerType, type Scenario } from '@/store/useStore';
+import type { ChangeEvent } from 'react';
+import { useStore, type MlFeatures, type MlNumericFeatureKey, type Region, type LayerType, type Scenario } from '@/store/useStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
@@ -13,7 +14,38 @@ interface SidebarProps {
 }
 
 export function Sidebar({ className, collapsed = false, onToggleCollapsed }: SidebarProps) {
-    const { region, setRegion, scenario, setScenario, activeLayer, setActiveLayer } = useStore();
+    const {
+        region,
+        setRegion,
+        scenario,
+        setScenario,
+        activeLayer,
+        setActiveLayer,
+        mlEnabled,
+        setMlEnabled,
+        mlManualOverrides,
+        setMlManualOverride,
+        resetMlManualOverrides,
+        mapSample,
+        tiffStats,
+        tiffFeatureKey,
+        setTiffFeatureKey,
+    } = useStore();
+
+    const setNum = (key: MlNumericFeatureKey) => (e: ChangeEvent<HTMLInputElement>) => {
+        const raw = e.target.value;
+        setMlManualOverride(key, raw === '' ? undefined : Number(raw));
+    };
+
+    const setStr = (key: 'location_name' | 'district' | 'state') => (e: ChangeEvent<HTMLInputElement>) => {
+        const raw = e.target.value;
+        setMlManualOverride(key, raw === '' ? undefined : raw);
+    };
+
+    const overrideValue = <K extends keyof MlFeatures>(key: K) => {
+        const v = mlManualOverrides[key];
+        return v == null ? '' : String(v);
+    };
 
     return (
         <div
@@ -110,6 +142,116 @@ export function Sidebar({ className, collapsed = false, onToggleCollapsed }: Sid
                 <CardContent className="p-4 space-y-3">
                     <div className="text-sm font-semibold">Custom analysis upload</div>
                     <TiffUploader />
+                </CardContent>
+            </Card>
+
+            <Card className="border border-border shadow-sm">
+                <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                        <div>
+                            <div className="text-sm font-semibold">ML inference (wtf2)</div>
+                            <div className="text-[11px] text-muted-foreground">Combine Map + GeoTIFF + Manual inputs</div>
+                        </div>
+                        <Button
+                            variant={mlEnabled ? 'secondary' : 'outline'}
+                            size="sm"
+                            onClick={() => setMlEnabled(!mlEnabled)}
+                            title={mlEnabled ? 'Disable ML inference' : 'Enable ML inference'}
+                        >
+                            {mlEnabled ? 'ML: ON' : 'ML: OFF'}
+                        </Button>
+                    </div>
+
+                    <div className="space-y-1 text-[11px] text-muted-foreground">
+                        <div>
+                            <span className="font-medium text-foreground">Map sample:</span>{' '}
+                            {mapSample ? `${mapSample.elevationM == null ? '—' : `${Math.round(mapSample.elevationM)} m`} @ ${mapSample.lon.toFixed(3)}, ${mapSample.lat.toFixed(3)}` : '—'}
+                        </div>
+                        <div>
+                            <span className="font-medium text-foreground">GeoTIFF mean:</span>{' '}
+                            {tiffStats ? `${tiffStats.mean.toFixed(3)} (min ${tiffStats.min.toFixed(3)}, max ${tiffStats.max.toFixed(3)})` : '—'}
+                        </div>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-xs font-medium">GeoTIFF maps to</label>
+                        <select
+                            value={tiffFeatureKey}
+                            onChange={(e) => setTiffFeatureKey(e.target.value as MlNumericFeatureKey)}
+                            className={cn(
+                                'h-9 w-full rounded-md border border-input bg-background px-3 text-xs outline-none',
+                                'focus:ring-2 focus:ring-ring'
+                            )}
+                            aria-label="Select which ML feature the GeoTIFF mean should populate"
+                        >
+                            <option value="elevation">elevation</option>
+                            <option value="slope">slope</option>
+                            <option value="flow_accumulation">flow_accumulation</option>
+                            <option value="distance_to_river">distance_to_river</option>
+                            <option value="lulc_agriculture">lulc_agriculture</option>
+                            <option value="lulc_urban">lulc_urban</option>
+                            <option value="population_density">population_density</option>
+                            <option value="velocity_index">velocity_index</option>
+                        </select>
+                        {!tiffStats && (
+                            <div className="text-[10px] text-muted-foreground">
+                                Upload a GeoTIFF to compute a mean value; your selection will be applied after upload.
+                            </div>
+                        )}
+                    </div>
+
+                    <details className="rounded-md border border-border p-3 bg-background/50">
+                        <summary className="cursor-pointer text-xs font-semibold">Manual overrides</summary>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                            <label className="text-[10px] text-muted-foreground">
+                                elevation
+                                <input className="mt-1 h-8 w-full rounded border border-input bg-background px-2 text-xs" value={overrideValue('elevation')} onChange={setNum('elevation')} />
+                            </label>
+                            <label className="text-[10px] text-muted-foreground">
+                                slope
+                                <input className="mt-1 h-8 w-full rounded border border-input bg-background px-2 text-xs" value={overrideValue('slope')} onChange={setNum('slope')} />
+                            </label>
+                            <label className="text-[10px] text-muted-foreground">
+                                flow_accumulation
+                                <input className="mt-1 h-8 w-full rounded border border-input bg-background px-2 text-xs" value={overrideValue('flow_accumulation')} onChange={setNum('flow_accumulation')} />
+                            </label>
+                            <label className="text-[10px] text-muted-foreground">
+                                distance_to_river
+                                <input className="mt-1 h-8 w-full rounded border border-input bg-background px-2 text-xs" value={overrideValue('distance_to_river')} onChange={setNum('distance_to_river')} />
+                            </label>
+                            <label className="text-[10px] text-muted-foreground">
+                                population_density
+                                <input className="mt-1 h-8 w-full rounded border border-input bg-background px-2 text-xs" value={overrideValue('population_density')} onChange={setNum('population_density')} />
+                            </label>
+                            <label className="text-[10px] text-muted-foreground">
+                                velocity_index
+                                <input className="mt-1 h-8 w-full rounded border border-input bg-background px-2 text-xs" value={overrideValue('velocity_index')} onChange={setNum('velocity_index')} />
+                            </label>
+                            <label className="text-[10px] text-muted-foreground">
+                                lulc_agriculture
+                                <input className="mt-1 h-8 w-full rounded border border-input bg-background px-2 text-xs" value={overrideValue('lulc_agriculture')} onChange={setNum('lulc_agriculture')} />
+                            </label>
+                            <label className="text-[10px] text-muted-foreground">
+                                lulc_urban
+                                <input className="mt-1 h-8 w-full rounded border border-input bg-background px-2 text-xs" value={overrideValue('lulc_urban')} onChange={setNum('lulc_urban')} />
+                            </label>
+                            <label className="text-[10px] text-muted-foreground col-span-2">
+                                location_name
+                                <input className="mt-1 h-8 w-full rounded border border-input bg-background px-2 text-xs" value={overrideValue('location_name')} onChange={setStr('location_name')} />
+                            </label>
+                        </div>
+
+                        <div className="mt-3 flex gap-2">
+                            <Button variant="outline" size="sm" className="h-8 text-xs" onClick={resetMlManualOverrides}>
+                                Reset overrides
+                            </Button>
+                        </div>
+                    </details>
+
+                    <div className="text-[10px] text-muted-foreground">
+                        When ML is ON, the frontend sends a full feature vector to the backend, which runs the wtf2 model.
+                        Flood depth comes from the Scenario slider (0m/1m/2m).
+                    </div>
                 </CardContent>
             </Card>
 

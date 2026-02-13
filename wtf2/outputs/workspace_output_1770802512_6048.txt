@@ -1,0 +1,35 @@
+INFO:     Will watch for changes in these directories: ['/workspace']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [1684] using StatReload
+INFO:     Started server process [1692]
+INFO:     Waiting for application startup.
+INFO:api.main:Starting Jal-Setu AI API...
+INFO:ml.flood_risk_model:Model loaded from models/flood_risk_model.pkl
+INFO:api.main:ML Model loaded successfully from models/flood_risk_model.pkl
+INFO:api.main:GenAI Chatbot initialized successfully
+INFO:     Application startup complete.
+INFO:     127.0.0.1:43538 - "GET /docs?password=aa1e80a4-c976-40f5-a483-d7e559cc7dc2 HTTP/1.1" 200 OK
+INFO:     172.16.0.1:47942 - "GET /docs?_gl=1*1nzgld7*_gcl_au*NjM2NjA4ODU0LjE3NjM4MTIwMjc.*_ga*MTY5NzYwNjc1MC4xNzU1OTI3MTU0*_ga_8NW18Q4WF2*czE3NzA4MDEwOTEkbzMzJGcxJHQxNzcwODAxNDUzJGo2MCRsMCRoNDc3ODU5NjI.&password=aa1e80a4-c976-40f5-a483-d7e559cc7dc2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49838 - "GET /openapi.json?password=aa1e80a4-c976-40f5-a483-d7e559cc7dc2 HTTP/1.1" 200 OK
+INFO:     172.16.0.1:47954 - "GET /openapi.json?password=aa1e80a4-c976-40f5-a483-d7e559cc7dc2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49848 - "GET /?password=aa1e80a4-c976-40f5-a483-d7e559cc7dc2 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56150 - "GET /?password=aa1e80a4-c976-40f5-a483-d7e559cc7dc2 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56172 - "GET /docs?password=aa1e80a4-c976-40f5-a483-d7e559cc7dc2 HTTP/1.1" 200 OK
+INFO:     172.16.0.1:55772 - "GET /docs?_gl=1*xa1vfa*_gcl_au*NjM2NjA4ODU0LjE3NjM4MTIwMjc.*_ga*MTY5NzYwNjc1MC4xNzU1OTI3MTU0*_ga_8NW18Q4WF2*czE3NzA4MDEwOTEkbzMzJGcxJHQxNzcwODA0MTY4JGo2MCRsMCRoNDc3ODU5NjI.&password=aa1e80a4-c976-40f5-a483-d7e559cc7dc2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40790 - "GET /openapi.json?password=aa1e80a4-c976-40f5-a483-d7e559cc7dc2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40806 - "GET /?password=aa1e80a4-c976-40f5-a483-d7e559cc7dc2 HTTP/1.1" 404 Not Found
+INFO:     172.16.0.1:42432 - "GET /openapi.json?password=aa1e80a4-c976-40f5-a483-d7e559cc7dc2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37878 - "GET /?password=aa1e80a4-c976-40f5-a483-d7e559cc7dc2 HTTP/1.1" 404 Not Found
+WARNING:  StatReload detected changes in 'ml/generate_regional_data.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:api.main:Shutting down Jal-Setu AI API...
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1692]
+INFO:     Started server process [2623]
+INFO:     Waiting for application startup.
+INFO:api.main:Starting Jal-Setu AI API...
+INFO:ml.flood_risk_model:Model loaded from models/flood_risk_model.pkl
+INFO:api.main:ML Model loaded successfully from models/flood_risk_model.pkl
+INFO:api.main:GenAI Chatbot initialized successfully
+INFO:     Application startup complete.

@@ -3,7 +3,7 @@
 This file provides guidance to WARP (warp.dev) when working with code in this repository.
 
 ## Project summary
-FloodShield AI is a small full-stack demo:
+Jal-Setu AI is a small full-stack demo:
 - Frontend: React + TypeScript (Vite) dashboard using Tailwind CSS, Zustand, Recharts, and ArcGIS JS (`@arcgis/core`) with an optional Google 3D map provider.
 - Backend: a mock FastAPI server under `backend/` that serves JSON for charts/metrics and generates a report string.
 
